@@ -57,6 +57,12 @@ export const eventStatusEnum = pgEnum("event_status", [
   "archived",
 ]);
 
+export const eventAttendeePassTypeEnum = pgEnum("event_attendee_pass_type", [
+  "full-access",
+  "meal-only",
+  "day-pass",
+]);
+
 export const exhibitorRegistrationStatusEnum = pgEnum(
   "exhibitor_registration_status",
   ["purchased", "comp", "sponsor", "declined", "pending"],
@@ -105,6 +111,8 @@ export type OutreachLogEntry = {
   note?: string;
   outcome?: string;
 };
+
+export type EventAttendeeDayAccess = Record<string, unknown>;
 
 const auditColumns = () => ({
   createdBy: uuid("created_by").references((): AnyPgColumn => users.id, {
@@ -173,8 +181,10 @@ export const people = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::text[]`),
-    mobile: text("mobile"),
-    phone: text("phone"),
+    phone: text("phone")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     currentEmployment: jsonb(
       "current_employment",
     ).$type<CurrentEmployment | null>(),
@@ -311,6 +321,37 @@ export const exhibitorRegistrations = pgTable(
   ],
 );
 
+export const eventAttendees = pgTable(
+  "event_attendees",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    registrationId: uuid("registration_id")
+      .notNull()
+      .references(() => exhibitorRegistrations.id, { onDelete: "cascade" }),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "restrict" }),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    email: text("email").notNull(),
+    passType: eventAttendeePassTypeEnum("pass_type").notNull(),
+    dayAccess: jsonb("day_access")
+      .$type<EventAttendeeDayAccess>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    nameTagPrinted: boolean("name_tag_printed").notNull().default(false),
+    ...auditColumns(),
+  },
+  (table) => [
+    index("event_attendees_event_id_idx").on(table.eventId),
+    index("event_attendees_registration_id_idx").on(table.registrationId),
+    index("event_attendees_person_id_idx").on(table.personId),
+  ],
+);
+
 export const memberships = pgTable(
   "memberships",
   {
@@ -348,6 +389,7 @@ export const peopleRelations = relations(people, ({ many, one }) => ({
     relationName: "personUserAccount",
   }),
   committeeAssignments: many(committeeAssignments),
+  eventAttendances: many(eventAttendees),
   primaryContactRegistrations: many(exhibitorRegistrations),
   keyContactCompanies: many(companies),
 }));
@@ -388,11 +430,12 @@ export const committeeAssignmentsRelations = relations(
 
 export const eventsRelations = relations(events, ({ many }) => ({
   exhibitorRegistrations: many(exhibitorRegistrations),
+  attendees: many(eventAttendees),
 }));
 
 export const exhibitorRegistrationsRelations = relations(
   exhibitorRegistrations,
-  ({ one }) => ({
+  ({ many, one }) => ({
     event: one(events, {
       fields: [exhibitorRegistrations.eventId],
       references: [events.id],
@@ -405,8 +448,24 @@ export const exhibitorRegistrationsRelations = relations(
       fields: [exhibitorRegistrations.primaryContactPersonId],
       references: [people.id],
     }),
+    attendees: many(eventAttendees),
   }),
 );
+
+export const eventAttendeesRelations = relations(eventAttendees, ({ one }) => ({
+  event: one(events, {
+    fields: [eventAttendees.eventId],
+    references: [events.id],
+  }),
+  registration: one(exhibitorRegistrations, {
+    fields: [eventAttendees.registrationId],
+    references: [exhibitorRegistrations.id],
+  }),
+  person: one(people, {
+    fields: [eventAttendees.personId],
+    references: [people.id],
+  }),
+}));
 
 export const membershipsRelations = relations(memberships, ({ one }) => ({
   company: one(companies, {
@@ -430,5 +489,7 @@ export type NewEvent = typeof events.$inferInsert;
 export type ExhibitorRegistration = typeof exhibitorRegistrations.$inferSelect;
 export type NewExhibitorRegistration =
   typeof exhibitorRegistrations.$inferInsert;
+export type EventAttendee = typeof eventAttendees.$inferSelect;
+export type NewEventAttendee = typeof eventAttendees.$inferInsert;
 export type Membership = typeof memberships.$inferSelect;
 export type NewMembership = typeof memberships.$inferInsert;

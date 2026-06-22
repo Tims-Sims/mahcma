@@ -7,6 +7,8 @@ import {
   committees,
   companies,
   companyCategoryEnum,
+  eventAttendeePassTypeEnum,
+  eventAttendees,
   events,
   eventStatusEnum,
   exhibitorRegistrations,
@@ -43,6 +45,9 @@ export const titleSchema = createSelectSchema(titleEnum);
 export const userRoleSchema = createSelectSchema(userRoleEnum);
 export const committeeRoleSchema = createSelectSchema(committeeRoleEnum);
 export const eventStatusSchema = createSelectSchema(eventStatusEnum);
+export const eventAttendeePassTypeSchema = createSelectSchema(
+  eventAttendeePassTypeEnum,
+);
 export const exhibitorRegistrationStatusSchema = createSelectSchema(
   exhibitorRegistrationStatusEnum,
 );
@@ -87,6 +92,8 @@ export const outreachLogEntrySchema = z.object({
   outcome: z.string().max(500).optional(),
 });
 
+export const eventAttendeeDayAccessSchema = z.record(z.string(), z.unknown());
+
 const companyRefinements = {
   legacyId: () => z.number().int(),
   name: () => z.string().min(1, "Company name is required").max(200),
@@ -112,10 +119,14 @@ const personRefinements = {
   email: () => z.string().email("Must be a valid email"),
   alternateEmails: () =>
     z.array(z.string().email("Must be a valid email")).default([]),
-  mobile: () =>
-    z.string().regex(digitsOnlyRegex, "Mobile number must contain digits only"),
   phone: () =>
-    z.string().regex(digitsOnlyRegex, "Phone number must contain digits only"),
+    z
+      .array(
+        z
+          .string()
+          .regex(digitsOnlyRegex, "Phone number must contain digits only"),
+      )
+      .default([]),
   currentEmployment: () => currentEmploymentSchema,
   employmentHistory: () => z.array(employmentHistorySchema).default([]),
 };
@@ -159,6 +170,16 @@ const exhibitorRegistrationRefinements = {
   boothType: () => z.string().min(1, "Booth type is required"),
   primaryContactPersonId: () => z.uuid("Primary contact person ID is required"),
   outreachLog: () => z.array(outreachLogEntrySchema).default([]),
+};
+
+const eventAttendeeRefinements = {
+  eventId: () => z.uuid("Event ID is required"),
+  registrationId: () => z.uuid("Registration ID is required"),
+  personId: () => z.uuid("Person ID is required"),
+  firstName: () => z.string().min(1, "First name is required"),
+  lastName: () => z.string().min(1, "Last name is required"),
+  email: () => z.string().email("Must be a valid email"),
+  dayAccess: () => eventAttendeeDayAccessSchema.default({}),
 };
 
 const membershipRefinements = {
@@ -264,6 +285,19 @@ export const exhibitorRegistrationUpdateSchema = createUpdateSchema(
   exhibitorRegistrationRefinements,
 );
 
+export const eventAttendeeSelectSchema = createSelectSchema(
+  eventAttendees,
+  eventAttendeeRefinements,
+);
+export const eventAttendeeInsertSchema = createInsertSchema(
+  eventAttendees,
+  eventAttendeeRefinements,
+);
+export const eventAttendeeUpdateSchema = createUpdateSchema(
+  eventAttendees,
+  eventAttendeeRefinements,
+);
+
 export const membershipSelectSchema = createSelectSchema(
   memberships,
   membershipRefinements,
@@ -298,6 +332,12 @@ export type ExhibitorRegistrationInsertInput = z.infer<
 >;
 export type ExhibitorRegistrationUpdateInput = z.infer<
   typeof exhibitorRegistrationUpdateSchema
+>;
+export type EventAttendeeInsertInput = z.infer<
+  typeof eventAttendeeInsertSchema
+>;
+export type EventAttendeeUpdateInput = z.infer<
+  typeof eventAttendeeUpdateSchema
 >;
 export type MembershipInsertInput = z.infer<typeof membershipInsertSchema>;
 export type MembershipUpdateInput = z.infer<typeof membershipUpdateSchema>;
