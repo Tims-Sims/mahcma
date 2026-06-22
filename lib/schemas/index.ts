@@ -150,7 +150,7 @@ const committeeRefinements = {
 
 const committeeAssignmentRefinements = {
   personId: () => z.uuid("Person ID is required"),
-  subCommitteeId: () => z.uuid("Committee ID is required"),
+  committeeId: () => z.uuid("Committee ID is required"),
   startDate: () => z.coerce.date(),
   endDate: () => z.coerce.date(),
   notes: () => z.string().max(1000),

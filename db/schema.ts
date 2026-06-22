@@ -47,7 +47,7 @@ export const committeeRoleEnum = pgEnum("committee_role", [
   "Chair",
   "Vice Chair",
   "Member",
-  "Alternate",
+  "Other",
 ]);
 
 export const eventStatusEnum = pgEnum("event_status", [
@@ -246,20 +246,18 @@ export const committeeAssignments = pgTable(
     personId: uuid("person_id")
       .notNull()
       .references(() => people.id, { onDelete: "cascade" }),
-    subCommitteeId: uuid("sub_committee_id").references(() => committees.id, {
+    committeeId: uuid("committee_id").references(() => committees.id, {
       onDelete: "set null",
     }),
-    role: committeeRoleEnum("role").notNull().default("Member"),
-    startDate: timestamp("start_date", { withTimezone: true }).notNull(),
+    role: committeeRoleEnum("role").notNull().default("Other"),
+    startDate: timestamp("start_date", { withTimezone: true }),
     endDate: timestamp("end_date", { withTimezone: true }),
     notes: varchar("notes", { length: 1000 }),
     ...auditColumns(),
   },
   (table) => [
     index("committee_assignments_person_id_idx").on(table.personId),
-    index("committee_assignments_sub_committee_id_idx").on(
-      table.subCommitteeId,
-    ),
+    index("committee_assignments_committee_id_idx").on(table.committeeId),
   ],
 );
 
@@ -421,8 +419,8 @@ export const committeeAssignmentsRelations = relations(
       fields: [committeeAssignments.personId],
       references: [people.id],
     }),
-    subCommittee: one(committees, {
-      fields: [committeeAssignments.subCommitteeId],
+    committee: one(committees, {
+      fields: [committeeAssignments.committeeId],
       references: [committees.id],
     }),
   }),
