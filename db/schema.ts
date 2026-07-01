@@ -179,18 +179,15 @@ export const people = pgTable(
     email: text("email"),
     alternateEmails: text("alternate_emails")
       .array()
-      .notNull()
       .default(sql`'{}'::text[]`),
     phone: text("phone")
       .array()
-      .notNull()
       .default(sql`'{}'::text[]`),
     currentEmployment: jsonb(
       "current_employment",
     ).$type<CurrentEmployment | null>(),
     employmentHistory: jsonb("employment_history")
       .$type<EmploymentHistory[]>()
-      .notNull()
       .default(sql`'[]'::jsonb`),
     ...auditColumns(),
   },

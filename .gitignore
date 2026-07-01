@@ -19,6 +19,7 @@
 
 # production
 /build
+/db/imports
 
 # misc
 .DS_Store
